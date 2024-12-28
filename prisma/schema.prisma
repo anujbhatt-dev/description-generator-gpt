@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Referral {
+  id                                   Int            @id @default(autoincrement())
+  referrerId                           Int
+  referredUserId                       Int
+  status                               ReferralStatus
+  createdAt                            DateTime       @default(now())
+  updatedAt                            DateTime
+  users_Referral_referredUserIdTousers users          @relation("Referral_referredUserIdTousers", fields: [referredUserId], references: [id])
+  users_Referral_referrerIdTousers     users          @relation("Referral_referrerIdTousers", fields: [referrerId], references: [id])
+}
+
+model activity_logs {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  gameId    Int
+  action    String
+  timestamp DateTime @default(now())
+  games     games    @relation(fields: [gameId], references: [id])
+  users     users    @relation(fields: [userId], references: [id])
+
+  @@index([userId, gameId])
+}
+
+model categories {
+  id          Int          @id @default(autoincrement())
+  name        String
+  slug        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime
+  game_types  game_types[]
+  games       games[]
+  images      images?
+
+  @@index([name])
+  @@index([slug])
+}
+
+model game_stats {
+  id        Int      @id @default(autoincrement())
+  gameId    Int      @unique
+  views     Int      @default(0)
+  plays     Int      @default(0)
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  games     games    @relation(fields: [gameId], references: [id])
+}
+
+model game_types {
+  id          Int        @id @default(autoincrement())
+  name        String
+  slug        String     @unique
+  description String?
+  categoryId  Int
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  categories  categories @relation(fields: [categoryId], references: [id])
+  games       games[]
+  images      images?
+
+  @@index([categoryId, name])
+  @@index([name])
+  @@index([slug])
+}
+
+model games {
+  id                  Int             @id @default(autoincrement())
+  name                String
+  slug                String
+  description         String?
+  releaseDate         DateTime?
+  popularity          Int             @default(0)
+  gameTypeId          Int
+  providerId          Int
+  deletedAt           DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime
+  categoryId          Int
+  activity_logs       activity_logs[]
+  game_stats          game_stats?
+  categories          categories      @relation(fields: [categoryId], references: [id])
+  game_types          game_types      @relation(fields: [gameTypeId], references: [id])
+  providers           providers       @relation(fields: [providerId], references: [id])
+  images              images?
+  users_FavoriteGames users[]         @relation("FavoriteGames")
+  tags                tags[]          @relation("GameTags")
+  users_RecentGames   users[]         @relation("RecentGames")
+
+  @@unique([name, providerId, gameTypeId, categoryId])
+  @@index([gameTypeId])
+  @@index([name])
+  @@index([popularity])
+  @@index([providerId, name])
+  @@index([slug])
+}
+
+model images {
+  id         Int         @id @default(autoincrement())
+  url        String
+  userId     Int?        @unique
+  providerId Int?        @unique
+  gameId     Int?        @unique
+  gameTypeId Int?        @unique
+  categoryId Int?        @unique
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime
+  categories categories? @relation(fields: [categoryId], references: [id])
+  games      games?      @relation(fields: [gameId], references: [id])
+  game_types game_types? @relation(fields: [gameTypeId], references: [id])
+  providers  providers?  @relation(fields: [providerId], references: [id])
+  users      users?      @relation(fields: [userId], references: [id])
+}
+
+model providers {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  contactInfo String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  games       games[]
+  images      images?
+
+  @@index([name])
+  @@index([slug])
+}
+
+model tags {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique
+  games games[] @relation("GameTags")
+}
+
+model user_preferences {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  language  String?
+  theme     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  users     users    @relation(fields: [userId], references: [id])
+}
+
+model users {
+  id                                      Int               @id @default(autoincrement())
+  username                                String            @unique
+  email                                   String            @unique
+  password                                String
+  phoneNumber                             String            @unique
+  createdAt                               DateTime          @default(now())
+  updatedAt                               DateTime
+  referralCode                            String?           @unique
+  referredByCode                          String?
+  Referral_Referral_referredUserIdTousers Referral[]        @relation("Referral_referredUserIdTousers")
+  Referral_Referral_referrerIdTousers     Referral[]        @relation("Referral_referrerIdTousers")
+  activity_logs                           activity_logs[]
+  images                                  images?
+  user_preferences                        user_preferences?
+  games_FavoriteGames                     games[]           @relation("FavoriteGames")
+  games_RecentGames                       games[]           @relation("RecentGames")
+}
+
+enum ReferralStatus {
+  PENDING
+  COMPLETED
+  REWARDED
+}
